@@ -1,3 +1,4 @@
+import subprocess
 import xml.etree.cElementTree as ET
 from datetime import date
 
@@ -6,7 +7,13 @@ root = ET.Element("zabbix_export")
 ET.SubElement(root, "version").text = "3.4"
 ET.SubElement(root, "date").text = "2018-05-15T12:41:12Z"
 
-hostsList = ['acores.ch', 'madere.ch']
+# First step, lists vhosts on plesk
+# https://support.plesk.com/hc/en-us/articles/213368629-How-to-get-a-list-of-Plesk-domains-and-their-IP-addresses
+command = "MYSQL_PWD=`sudo cat /etc/psa/.psa.shadow` mysql -u admin -Dpsa -s -r -e\"SELECT dom.name FROM domains " \
+          "dom LEFT JOIN DomainServices d ON (dom.id = d.dom_id AND d.type = 'web')\""
+s = subprocess.Popen([command], stdout=subprocess.PIPE, shell=True).stdout
+vhostsList = s.read().splitlines()
+
 groupArr = ['Vhost KreativMedia', 'Vhosts', 'Wordpress']
 groups = ET.SubElement(root, "groups")
 
@@ -16,7 +23,7 @@ for groupName in groupArr:
 
 hosts = ET.SubElement(root, "hosts")
 
-for host in hostsList:
+for host in vhostsList:
     hostName = "www."+host
     hostTag = ET.SubElement(groups, "host")
     ET.SubElement(hostTag, "host").text = hostName
@@ -68,6 +75,7 @@ for host in hostsList:
 
 tree = ET.ElementTree(root)
 
+
 # write(file, encoding="us-ascii", xml_declaration=None, default_namespace=None, method="xml", *,
 # short_empty_elements=True)
-tree.write("filename.xml", "utf-8", xml_declaration=True, method="xml", short_empty_elements=True)
+tree.write("filename.xml", "utf-8", xml_declaration=True, method="xml")
